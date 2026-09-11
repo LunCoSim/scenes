@@ -1,0 +1,23 @@
+<root BTCPP_format="4" main_tree_to_execute="MainTree">
+  <!-- Sunfall Run — autopilot route.
+       Each drive_to targets an authored waypoint PRIM by path, which registers
+       it as an ordered route node: entering that marker's trigger emits the
+       typed `waypoint.reached` {path,state,index} event the mission script
+       waits on. Bound to the rover by a LunCoProgramAPI scope in
+       my_survey.usda; activated by `EngageAutopilot`.
+
+       The mission does NOT engage this on load — the run is meant to be
+       driven by hand. It is here so the course can also be watched hands-off.
+
+       Leg 4 is the long one: from the midpoint at z=-43.55 down to z=-170,
+       which is 126 m ending INSIDE the sun sphere. The wider arrival radius
+       matches the wider trigger authored on Waypoint4. -->
+  <BehaviorTree ID="MainTree">
+    <Sequence>
+      <Action ID="drive_to" target="/Survey/Waypoint1" speed="0.9" radius="4.0"/>
+      <Action ID="drive_to" target="/Survey/Waypoint2" speed="0.9" radius="4.0"/>
+      <Action ID="drive_to" target="/Survey/Waypoint3" speed="0.9" radius="4.0"/>
+      <Action ID="drive_to" target="/Survey/Waypoint4" speed="0.9" radius="5.0"/>
+    </Sequence>
+  </BehaviorTree>
+</root>

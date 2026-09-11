@@ -1,0 +1,7 @@
+name = "my-survey"
+version = "0.1.0"
+description = "Sunfall Run — a 200 m neon road: four gates, a pair of flame cannons at pylon pair 5, finishing inside the sun."
+
+[usd]
+# The stage that opens when this Twin is opened.
+default_scene = "my_survey.usda"

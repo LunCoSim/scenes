@@ -1,0 +1,310 @@
+#usda 1.0
+(
+    defaultPrim = "HoloCannon"
+    upAxis = "Y"
+    metersPerUnit = 1
+)
+
+# ── CYBERPUNK FLAME CANNON ────────────────────────────────────────────────
+#
+# Replaces a palm pylon at one road gate. A squat armoured plinth, a ribbed
+# column, a yoke and a barrel that points ACROSS the road, plus a plume that
+# only exists when the mission lights it.
+#
+# ORIENTATION. The barrel fires along **+X** in this component's own frame.
+# The scene mounts the left cannon unrotated (its +X points at the road
+# centre) and gives the right one `rotateXYZ = (0, 180, 0)` so the pair fire
+# INTO each other across the carriageway.
+#
+# THE FLAME IS A SHADER, NOT GEOMETRY. `flame_beam.wgsl` (a twin-local copy
+# of the shipped `plume.wgsl`) draws the beam inside the cone it is bound to —
+# the pattern `50-usd-driven-visuals.md` prescribes for a shape that is a
+# FIELD rather than a rigid change of size. No script lights it: the shader
+# gates itself on the rover's position, wired in per cannon by the scene (see
+# THE GATE in Flame_Mat), so it is dark from the first frame.
+#
+# The barrel/plinth reuse `holo_pylon.wgsl` so the cannons read as the same
+# neon hardware as the pylons they replace — deep-blue chassis, green barrel.
+def Xform "HoloCannon" (
+    doc = "Road-gate flame cannon: neon hardware plus a flame_beam.wgsl flame gated on the rover's position."
+    prepend apiSchemas = ["LunCoCatalogAPI"]
+    kind = "component"
+)
+{
+    uniform bool lunco:spawnable = true
+
+    def Scope "Looks"
+    {
+        # Chassis — DEEP blue, mostly solid so it reads as hardware.
+        def Material "Cannon_Mat"
+        {
+            token outputs:surface.connect = </HoloCannon/Looks/Cannon_Mat/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:wgsl:sourceAsset = @twin://my-survey/holo_pylon.wgsl@
+                color3f inputs:color = (0.04, 0.10, 1.70)
+                float inputs:glow = 1.9
+                float inputs:base_alpha = 0.82
+                float inputs:base_floor = 0.70
+                float inputs:blades = 0.0
+                float inputs:rim_gain = 0.75
+                float inputs:rim_power = 2.0
+                float inputs:ring_gain = 0.30
+                float inputs:ring_count = 5.0
+                float inputs:ring_speed = 1.1
+                float inputs:lattice_gain = 0.45
+                float inputs:lattice_cells = 7.0
+                float inputs:lattice_spin = 0.25
+                float inputs:sweep_gain = 0.0
+                float inputs:hot_edge = 0.55
+                float inputs:top_fade = 0.02
+                float inputs:bottom_fade = 0.02
+                token outputs:surface
+            }
+                float inputs:sweep_speed = 3.0
+                float inputs:ring_sharp = 5.0
+                float inputs:blade_soft = 0.08
+                float inputs:blade_twist = 1.0
+                float inputs:blade_gap = 0.4
+        }
+
+        # Barrel — bright foliage green, hotter, lattice running fast so it
+        # looks charged even before it fires. Green ties the cannons back to
+        # the palm crowns they replaced.
+        def Material "Barrel_Mat"
+        {
+            token outputs:surface.connect = </HoloCannon/Looks/Barrel_Mat/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:wgsl:sourceAsset = @twin://my-survey/holo_pylon.wgsl@
+                color3f inputs:color = (0.16, 2.30, 0.30)
+                float inputs:glow = 2.4
+                float inputs:base_alpha = 0.88
+                float inputs:base_floor = 0.62
+                float inputs:blades = 0.0
+                float inputs:rim_gain = 0.9
+                float inputs:rim_power = 1.8
+                float inputs:ring_gain = 1.1
+                float inputs:ring_count = 9.0
+                float inputs:ring_speed = 3.4
+                float inputs:ring_sharp = 6.0
+                float inputs:lattice_gain = 0.7
+                float inputs:lattice_cells = 10.0
+                float inputs:lattice_spin = 2.2
+                float inputs:sweep_gain = 0.0
+                float inputs:hot_edge = 1.1
+                float inputs:top_fade = 0.03
+                float inputs:bottom_fade = 0.03
+                token outputs:surface
+            }
+                float inputs:sweep_speed = 3.0
+                float inputs:blade_soft = 0.08
+                float inputs:blade_twist = 1.0
+                float inputs:blade_gap = 0.4
+        }
+
+        # ── FLAME ─────────────────────────────────────────────────────────
+        # Amber beam. Everything is authored once; the only live input is
+        # `rover_level`, which the gate below turns into on/off.
+        def Material "Flame_Mat"
+        {
+            token outputs:surface.connect = </HoloCannon/Looks/Flame_Mat/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:wgsl:sourceAsset = @twin://my-survey/flame_beam.wgsl@
+                # Linear HDR radiance, not display-space paint.
+                color3f inputs:core_color = (5.5, 1.00, 0.05)
+                color3f inputs:edge_color = (2.6, 0.20, 0.01)
+                # Burns at FULL throttle whenever the gate below is open. Never
+                # re-author this number at runtime: `SetUsdAttribute` and
+                # `SetObjectProperty` on a param are document/ShaderLook edits,
+                # and those REPLACE the canonical stage — which tore this scene
+                # down mid-drive.
+                float inputs:throttle = 1.0
+                float inputs:throttle_exponent = 0.35
+                float inputs:width_idle = 0.16
+                float inputs:flicker = 1.0
+                float inputs:flicker_speed = 13.0
+                float inputs:flicker_scale = 19.0
+                float inputs:density = 3.6
+                float inputs:steps = 28.0
+                # Coverage knob added in the twin copy of the shader: the
+                # shipped plume floors alpha near 0.55, which is why no amount
+                # of density tuning ever made these see-through.
+                float inputs:beam_opacity = 0.0225
+                # Running lights ON THE BEAM (not on the cannon body): bands
+                # that climb the shaft in a helix, same idea as the pylons'
+                # upward rings. spiral_turns is what makes them spiral rather
+                # than sit as flat rings.
+                float inputs:ring_gain = 1.9
+                float inputs:ring_count = 9.0
+                float inputs:ring_speed = 3.2
+                float inputs:ring_sharp = 3.5
+                float inputs:spiral_turns = 3.0
+                # THE GATE: burn while the rover is between 25 m before and
+                # 5.45 m past this cannon. Ignition starts at z=+1.45 (just
+                # past pylon pair 3) and the beams shoot out over the next 4 m,
+                # so they are already crossing overhead as the rover
+                # approaches; out at z=-29.0 (edge of Waypoint3's trigger).
+                # Was 14.55 m / instant — lit only ~1.5 s before arrival.
+                # `rover_level` is DRIVEN: each scene instance wires its Flame
+                # cone to the rover body's `position_z` (see my_survey.usda).
+                # It must be declared here as well, or the engine refuses the
+                # wire and the cannon never lights.
+                float inputs:gated = 1.0
+                float inputs:rover_level = 0.0
+                float inputs:gate_ahead = 25.0
+                float inputs:gate_behind = 5.45
+                float inputs:gate_ramp = 4.0
+                # This cone is mounted apex-at-the-muzzle (see Flame below), so
+                # the flame's length must grow from the APEX end — otherwise the
+                # ignition ramp lights the far end in the air first and reaches
+                # back to the barrel.
+                float inputs:nozzle_at_apex = 1.0
+                token outputs:surface
+            }
+        }
+    }
+
+    # ── HARDWARE ──────────────────────────────────────────────────────────
+    # Unit primitives; live size is `xformOp:scale` (the idiom in
+    # `50-usd-driven-visuals.md` — `radius`/`height` bake at instantiation).
+    # Nothing here collides: the rover drives the gap between the pair.
+    def Cylinder "Plinth" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+    {
+        uniform token axis = "Y"
+        double radius = 1.0
+        double height = 1.0
+        double3 xformOp:translate = (0, 0.30, 0)
+        double3 xformOp:scale = (1.70, 0.60, 1.70)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        rel material:binding = </HoloCannon/Looks/Cannon_Mat>
+        color3f[] primvars:displayColor = [(0.02, 0.07, 0.70)]
+        bool physics:collisionEnabled = false
+        bool primvars:doNotCastShadows = true
+    }
+    def Cylinder "Column" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+    {
+        uniform token axis = "Y"
+        double radius = 1.0
+        double height = 1.0
+        double3 xformOp:translate = (0, 2.10, 0)
+        double3 xformOp:scale = (0.62, 3.60, 0.62)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        rel material:binding = </HoloCannon/Looks/Cannon_Mat>
+        color3f[] primvars:displayColor = [(0.02, 0.09, 0.85)]
+        bool physics:collisionEnabled = false
+        bool primvars:doNotCastShadows = true
+    }
+    # Yoke — the block the barrel is slung in. Offset toward the road so the
+    # barrel has something to emerge from.
+    def Cube "Yoke" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+    {
+        double size = 1.0
+        double3 xformOp:translate = (0.10, 4.00, 0)
+        double3 xformOp:scale = (1.30, 1.05, 1.55)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        rel material:binding = </HoloCannon/Looks/Cannon_Mat>
+        color3f[] primvars:displayColor = [(0.03, 0.11, 0.95)]
+        bool physics:collisionEnabled = false
+        bool primvars:doNotCastShadows = true
+    }
+    # Barrel — a unit cylinder laid along +X by a 90 deg roll, so its LENGTH
+    # is `scale.y`. Spans x = -1.0 .. +1.0; the muzzle is the +X end.
+    def Cylinder "Barrel" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+    {
+        uniform token axis = "Y"
+        double radius = 1.0
+        double height = 1.0
+        double3 xformOp:translate = (0, 4.00, 0)
+        double3 xformOp:rotateXYZ = (0, 0, 135)
+        double3 xformOp:scale = (0.40, 2.00, 0.40)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        rel material:binding = </HoloCannon/Looks/Barrel_Mat>
+        color3f[] primvars:displayColor = [(0.12, 1.55, 0.22)]
+        bool physics:collisionEnabled = false
+        bool primvars:doNotCastShadows = true
+    }
+    # Muzzle collar at the barrel's lip.
+    def Cylinder "Muzzle" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+    {
+        uniform token axis = "Y"
+        double radius = 1.0
+        double height = 1.0
+        double3 xformOp:translate = (0.75, 4.75, 0)
+        double3 xformOp:rotateXYZ = (0, 0, 135)
+        double3 xformOp:scale = (0.58, 0.22, 0.58)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        rel material:binding = </HoloCannon/Looks/Barrel_Mat>
+        color3f[] primvars:displayColor = [(0.20, 2.10, 0.34)]
+        bool physics:collisionEnabled = false
+        bool primvars:doNotCastShadows = true
+    }
+
+    # ── PLUME ─────────────────────────────────────────────────────────────
+    # ORIENTATION: +135 deg roll about Z. The apex stays at the muzzle and the
+    # cone widens along (+X, +Y)/sqrt2 — 45 deg above the horizon, angled in
+    # over the road. With the muzzle at component (0.707, 4.707) the left
+    # cannon's beam leaves world (-9.293, 4.707) and reaches the centre line
+    # x = 0 at y = 14.0 after 13.14 m, so the 14.5 m envelope CROSSES its
+    # opposite number just past the apex of the arch and overshoots slightly.
+    # Was +90 (horizontal, meeting at road level).
+    #
+    # plume.wgsl's header describes the opposite convention (base at the
+    # nozzle, apex downstream, `a = y + 0.5` running 0 at the nozzle). Rolling
+    # -90 to match that read WAS TRIED AND LOOKS WRONG HERE — the torches came
+    # out reversed on screen. The shipped lander fires a rocket exhaust; a
+    # flamethrower reads better flaring the other way, and this is what the
+    # scene actually wants. Do not "correct" it back without looking at it.
+    #
+    # Base/apex sit between x = 1.0 (the muzzle lip) and x = 10 (mid-road).
+
+    def Cone "Flame" ( prepend apiSchemas = ["MaterialBindingAPI"] )
+    {
+        # Authored visible and LEFT visible: the flame is switched by the
+        # gate in its shader (rover position, wired per instance), which is
+        # dark from the first frame. The old way — authored visible, then
+        # hidden by the mission script with `SetObjectProperty`/`visible` —
+        # lit the beams for a moment on every load, because the script cannot
+        # reach the cones until the stage has finished streaming in.
+        uniform token axis = "Y"
+        double radius = 1.0
+        double height = 1.0
+        double3 xformOp:translate = (10.960, 14.960, 0)
+        double3 xformOp:rotateXYZ = (0, 0, 135)
+        double3 xformOp:scale = (1.60, 29.00, 1.60)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ", "xformOp:scale"]
+        rel material:binding = </HoloCannon/Looks/Flame_Mat>
+        float[] primvars:displayOpacity = [0.30]
+        uniform bool doubleSided = true
+        bool lunco:surface:additive = false
+        bool physics:collisionEnabled = false
+        bool primvars:doNotCastShadows = true
+    }
+
+    # A PILOT GLOW at the muzzle, held at a constant modest intensity.
+    #
+    # It is deliberately NOT switched with the beam. The only command that
+    # can change a light's intensity is `SetUsdAttribute`, and that is a
+    # DOCUMENT edit: per `21-domain-usd.md`, a coarse document edit replaces
+    # the canonical stage and advances its generation. Issuing one from the
+    # mission tore the whole scene down and rebuilt it — recompiling Modelica,
+    # re-creating the PhysicsScene and reloading the scenario — which restarted
+    # the task tree, which issued the edit again, in a ~15 s loop that read as
+    # a hard freeze. Shadows off, matching every other glow fixture in this
+    # scene.
+    def SphereLight "MuzzleLight" ( prepend apiSchemas = ["ShadowAPI", "LunCoLightAPI"] )
+    {
+        float inputs:intensity = 9000
+        float inputs:radius = 1.4
+        bool inputs:normalize = true
+        bool inputs:shadow:enable = false
+        color3f inputs:color = (2.6, 0.85, 0.18)
+        float lunco:light:range = 26.0
+        double3 xformOp:translate = (1.60, 5.60, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+    }
+}

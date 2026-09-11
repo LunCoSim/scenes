@@ -1,0 +1,1764 @@
+#usda 1.0
+(
+    defaultPrim = "HoloPylonWaypoint"
+    upAxis = "Y"
+    metersPerUnit = 1
+)
+
+# Reusable mission waypoint marker, rendered as a PULSING HOLOGRAPHIC PYLON.
+#
+# Functionally identical to `vessels/markers/waypoint.usda`: a `LunCoWaypointAPI`
+# root plus an invisible, ground-anchored overlap trigger
+# (`lunco:triggerZone = "waypoint"`) whose Sensor drives the canonical
+# `waypoint.reached {path,state,index}` event. Only the VISUAL differs.
+#
+# The visual is a set of concentric UNIT cylinders + a foot ring + a node,
+# every one bound to `holo_pylon.wgsl`. That shader cuts the tube into
+# spiralling energy blades and masks the rest to a rotating lattice + travelling
+# rings + fresnel rim, so nothing reads as the cylinder it is. Two-toned:
+# the purple/pink Cage+Aura only reach halfway up the pylon's full 4.8 m
+# height (doubled from the original 2.4 m) — the bare cyan Core lance and
+# its Node finial keep rising to the full height above them. The foot ring
+# stays put at ground scale.
+#
+# Drop it in with `prepend references` + `xformOp:translate`, exactly like
+# `waypoint.usda`.
+def Xform "HoloPylonWaypoint" (
+    doc = "Waypoint marker drawn as a pulsing holographic pylon; identical arrival-trigger contract to waypoint.usda."
+    prepend apiSchemas = ["LunCoCatalogAPI", "LunCoWaypointAPI"]
+    kind = "component"
+)
+{
+    uniform bool lunco:spawnable = true
+    bool lunco:waypoint = true
+    custom string lunco:interaction:left = "pass_through"
+    custom string lunco:interaction:right = "context"
+
+    # Authored inactive colour — read by the shared Rhai waypoint helper only if
+    # a mission opts into re-tinting reached markers. This mission does not.
+    float3 lunco:waypoint:inactiveColor = (0.10, 0.32, 0.36)
+
+    def Scope "Looks"
+    {
+        # Bladed cage — the spiralling blades + lattice + rings. The main event.
+        def Material "Cage_Mat"
+        {
+            token outputs:surface.connect = </HoloPylonWaypoint/Looks/Cage_Mat/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:wgsl:sourceAsset = @twin://my-survey/holo_pylon.wgsl@
+                # Spiralling energy blades — purple.
+                color3f inputs:color = (1.6, 0.15, 2.5)
+                float inputs:glow = 2.6
+                float inputs:base_alpha = 0.04
+                float inputs:base_floor = 0.03
+                float inputs:blades = 5.0
+                float inputs:blade_gap = 0.56
+                float inputs:blade_twist = 0.5
+                float inputs:rim_gain = 0.55
+                float inputs:ring_gain = 1.3
+                float inputs:lattice_gain = 0.85
+                float inputs:sweep_gain = 0.7
+                float inputs:hot_edge = 0.9
+                token outputs:surface
+            }
+        }
+
+        # Solid-looking core lance up the middle.
+        def Material "Core_Mat"
+        {
+            token outputs:surface.connect = </HoloPylonWaypoint/Looks/Core_Mat/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:wgsl:sourceAsset = @twin://my-survey/holo_pylon.wgsl@
+                # Inner core lance — deep blue, the palm "trunk". Was cyan;
+                # the outrun reference has no cyan in it at all.
+                color3f inputs:color = (0.06, 0.14, 1.15)
+                float inputs:glow = 2.3
+                float inputs:base_alpha = 0.75
+                float inputs:base_floor = 0.85
+                float inputs:blades = 0.0
+                float inputs:rim_gain = 0.2
+                float inputs:ring_gain = 0.45
+                float inputs:ring_count = 6.0
+                float inputs:lattice_gain = 0.0
+                float inputs:sweep_gain = 0.0
+                float inputs:hot_edge = 0.5
+                token outputs:surface
+            }
+        }
+
+        # Pure fresnel bloom — the wide aura and the foot ring.
+        def Material "Aura_Mat"
+        {
+            token outputs:surface.connect = </HoloPylonWaypoint/Looks/Aura_Mat/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:wgsl:sourceAsset = @twin://my-survey/holo_pylon.wgsl@
+                # Outer aura + foot ring — purple, to sit with the blades.
+                color3f inputs:color = (1.3, 0.12, 2.2)
+                float inputs:glow = 1.7
+                float inputs:base_alpha = 0.0
+                float inputs:base_floor = 0.0
+                float inputs:blades = 6.0
+                float inputs:blade_gap = 0.5
+                float inputs:blade_twist = 0.0
+                float inputs:rim_gain = 1.1
+                float inputs:rim_power = 2.2
+                float inputs:ring_gain = 0.35
+                float inputs:ring_count = 4.0
+                float inputs:lattice_gain = 0.0
+                float inputs:sweep_gain = 0.0
+                float inputs:hot_edge = 0.0
+                token outputs:surface
+            }
+        }
+        def Material "Frond_Mat"
+        {
+            token outputs:surface.connect = </HoloPylonWaypoint/Looks/Frond_Mat/Surface.outputs:surface>
+            def Shader "Surface"
+            {
+                uniform token info:implementationSource = "sourceAsset"
+                uniform asset info:wgsl:sourceAsset = @twin://my-survey/holo_pylon.wgsl@
+                color3f inputs:color = (0.05, 2.6, 0.1)
+                float inputs:glow = 3.0
+                float inputs:base_alpha = 0.15
+                float inputs:base_floor = 0.05
+                float inputs:blades = 3.0
+                float inputs:blade_gap = 0.4
+                float inputs:blade_twist = 1.0
+                float inputs:blade_soft = 0.08
+                float inputs:rim_gain = 0.7
+                float inputs:rim_power = 2.0
+                float inputs:ring_gain = 3.0
+                float inputs:ring_count = 3.0
+                float inputs:ring_speed = 2.2
+                float inputs:ring_sharp = 5.0
+                float inputs:lattice_gain = 1.0
+                float inputs:lattice_cells = 5.0
+                float inputs:lattice_spin = 1.2
+                float inputs:sweep_gain = 2.0
+                float inputs:glitch = 0.30
+                float inputs:sweep_speed = 3.0
+                float inputs:scanline = 0.15
+                float inputs:glitch = 0.15
+                float inputs:hot_edge = 0.6
+                float inputs:top_fade = 0.15
+                float inputs:bottom_fade = 0.05
+                token outputs:surface
+            }
+        }
+    }
+
+    # ── Visual pieces — UNIT primitives, sized by xformOp:scale, dressed
+    #    entirely by the shader. `lunco:surface:additive` + a sub-1
+    #    `displayOpacity` select the blend pipeline; no collision, no shadow —
+    #    these are annotations, not scenery.
+
+    # Bright core lance (solid, no blades).
+    def Cylinder "Core" (
+        prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"]
+    )
+    {
+        uniform token axis = "Y"
+        double radius = 1.0
+        double height = 1.0
+        double3 xformOp:translate = (0, 3.6, 0)
+        double3 xformOp:scale = (0.085, 7.2, 0.085)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        rel material:binding = </HoloPylonWaypoint/Looks/Core_Mat>
+        color3f[] primvars:displayColor = [(0.10, 0.22, 0.85)]
+        float[] primvars:displayOpacity = [0.7]
+        bool lunco:surface:additive = true
+        bool physics:collisionEnabled = false
+        bool primvars:doNotCastShadows = true
+    }
+
+    # Spiralling bladed cage — tall and slim. Purple/pink, so only reaches
+    # the halfway point of the pylon's full (cyan Core/Node) height — the
+    # bare cyan lance keeps rising above it.
+    def Cylinder "Cage" (
+        prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"]
+    )
+    {
+        uniform token axis = "Y"
+        double radius = 1.0
+        double height = 1.0
+        double3 xformOp:translate = (0, 1.8, 0)
+        double3 xformOp:scale = (0.42, 3.6, 0.42)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        rel material:binding = </HoloPylonWaypoint/Looks/Cage_Mat>
+        color3f[] primvars:displayColor = [(0.55, 0.2, 1.0)]
+        float[] primvars:displayOpacity = [0.5]
+        bool lunco:surface:additive = true
+        bool physics:collisionEnabled = false
+        bool primvars:doNotCastShadows = true
+    }
+
+    # Soft outer aura. Purple/pink, halved along with the Cage.
+    def Cylinder "Aura" (
+        prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"]
+    )
+    {
+        uniform token axis = "Y"
+        double radius = 1.0
+        double height = 1.0
+        double3 xformOp:translate = (0, 1.875, 0)
+        double3 xformOp:scale = (0.6, 3.75, 0.6)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        rel material:binding = </HoloPylonWaypoint/Looks/Aura_Mat>
+        color3f[] primvars:displayColor = [(0.55, 0.2, 1.0)]
+        float[] primvars:displayOpacity = [0.22]
+        bool lunco:surface:additive = true
+        bool physics:collisionEnabled = false
+        bool primvars:doNotCastShadows = true
+    }
+
+    # Glowing hoop standing on the ground (a vertical band, not a flat plate).
+    def Cylinder "FootRing" (
+        prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"]
+    )
+    {
+        uniform token axis = "Y"
+        double radius = 1.0
+        double height = 1.0
+        double3 xformOp:translate = (0, 0.3, 0)
+        double3 xformOp:scale = (0.8, 0.6, 0.8)
+        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+        rel material:binding = </HoloPylonWaypoint/Looks/Aura_Mat>
+        color3f[] primvars:displayColor = [(0.55, 0.2, 1.0)]
+        float[] primvars:displayOpacity = [0.55]
+        bool lunco:surface:additive = true
+        bool physics:collisionEnabled = false
+        bool primvars:doNotCastShadows = true
+    }
+
+    # Finial node at the tip.
+    def Sphere "Node" (
+        prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"]
+    )
+    {
+        double radius = 0.13
+        double3 xformOp:translate = (0, 7.38, 0)
+        uniform token[] xformOpOrder = ["xformOp:translate"]
+        rel material:binding = </HoloPylonWaypoint/Looks/Core_Mat>
+        color3f[] primvars:displayColor = [(0.35, 0.5, 1.0)]
+        float[] primvars:displayOpacity = [0.9]
+        bool lunco:surface:additive = true
+        bool physics:collisionEnabled = false
+        bool primvars:doNotCastShadows = true
+    }
+
+    # Invisible ground-anchored arrival trigger — verbatim from waypoint.usda.
+    # This is the prim that fires `waypoint.reached`.
+    def Sphere "Trigger" (
+        prepend apiSchemas = ["PhysicsCollisionAPI"]
+    )
+    {
+        double radius = 2.5
+        token visibility = "invisible"
+        bool physics:collisionEnabled = true
+        custom string lunco:triggerZone = "waypoint"
+    }
+
+    # ── PALM CROWN ─────────────────────────────────────────────
+    #    Merged in from my_survey.usda so the whole palm — pylon body AND
+    #    crown — is ONE portable asset. It used to live as a separate
+    #    `/Survey/Prototypes/FrondCluster` prototype that each RoadPylon
+    #    referenced as a second arc; the geometry is unchanged.
+    def Xform "Fronds"
+    {
+
+        def Xform "Frond1"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 1.1, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (64.3, -3.1, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.2942, 0)
+                    double3 xformOp:scale = (0.05, 0.5885, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.5884816107223234, 0)
+                    double3 xformOp:rotateXYZ = (21.8, 2.5, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.3294, 0)
+                        double3 xformOp:scale = (0.05, 0.6588, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.6588269351557269, 0)
+                        double3 xformOp:rotateXYZ = (21.2, -1.1, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2347, 0)
+                            double3 xformOp:scale = (0.05, 0.4695, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond2"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 17.7, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (69.1, -6.6, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.2924, 0)
+                    double3 xformOp:scale = (0.05, 0.5848, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.5848256476029973, 0)
+                    double3 xformOp:rotateXYZ = (20.8, 0.6, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2790, 0)
+                        double3 xformOp:scale = (0.05, 0.5581, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5580660933061046, 0)
+                        double3 xformOp:rotateXYZ = (28.2, 4.3, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2330, 0)
+                            double3 xformOp:scale = (0.05, 0.4660, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond3"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 42.4, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (71.0, -2.2, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.2892, 0)
+                    double3 xformOp:scale = (0.05, 0.5783, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.5783219249717673, 0)
+                    double3 xformOp:rotateXYZ = (24.5, -2.3, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2695, 0)
+                        double3 xformOp:scale = (0.05, 0.5389, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5389118765070222, 0)
+                        double3 xformOp:rotateXYZ = (21.4, 4.9, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2778, 0)
+                            double3 xformOp:scale = (0.05, 0.5556, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond4"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 62.5, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (71.3, 0.5, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3505, 0)
+                    double3 xformOp:scale = (0.05, 0.7010, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.7009673645969057, 0)
+                    double3 xformOp:rotateXYZ = (17.5, 0.7, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.3247, 0)
+                        double3 xformOp:scale = (0.05, 0.6494, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.6494106996379492, 0)
+                        double3 xformOp:rotateXYZ = (28.7, 5.1, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2758, 0)
+                            double3 xformOp:scale = (0.05, 0.5516, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond5"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 81.6, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (64.5, -3.8, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.2992, 0)
+                    double3 xformOp:scale = (0.05, 0.5984, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.598408194540316, 0)
+                    double3 xformOp:rotateXYZ = (14.0, -3.7, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2701, 0)
+                        double3 xformOp:scale = (0.05, 0.5402, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5401502144114594, 0)
+                        double3 xformOp:rotateXYZ = (23.9, 1.9, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2599, 0)
+                            double3 xformOp:scale = (0.05, 0.5197, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond6"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 99.0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (66.1, -3.3, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3477, 0)
+                    double3 xformOp:scale = (0.05, 0.6955, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.695498188156874, 0)
+                    double3 xformOp:rotateXYZ = (20.8, 1.5, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2753, 0)
+                        double3 xformOp:scale = (0.05, 0.5507, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5506707972297146, 0)
+                        double3 xformOp:rotateXYZ = (30.2, -4.7, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2610, 0)
+                            double3 xformOp:scale = (0.05, 0.5219, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond7"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 123.9, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (70.4, 0.8, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3288, 0)
+                    double3 xformOp:scale = (0.05, 0.6577, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.6576921376484812, 0)
+                    double3 xformOp:rotateXYZ = (23.1, 3.9, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2797, 0)
+                        double3 xformOp:scale = (0.05, 0.5594, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5593572107946156, 0)
+                        double3 xformOp:rotateXYZ = (20.4, -2.6, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2526, 0)
+                            double3 xformOp:scale = (0.05, 0.5052, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond8"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 137.7, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (73.4, 5.3, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3011, 0)
+                    double3 xformOp:scale = (0.05, 0.6022, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.6022016821197717, 0)
+                    double3 xformOp:rotateXYZ = (20.9, -1.5, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.3311, 0)
+                        double3 xformOp:scale = (0.05, 0.6622, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.6621821384610815, 0)
+                        double3 xformOp:rotateXYZ = (26.4, -3.3, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2510, 0)
+                            double3 xformOp:scale = (0.05, 0.5020, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond9"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 160.5, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (66.6, 1.2, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3448, 0)
+                    double3 xformOp:scale = (0.05, 0.6897, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.6896734325403715, 0)
+                    double3 xformOp:rotateXYZ = (17.8, -3.9, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.3373, 0)
+                        double3 xformOp:scale = (0.05, 0.6746, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.6746306409742666, 0)
+                        double3 xformOp:rotateXYZ = (27.1, -5.7, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2360, 0)
+                            double3 xformOp:scale = (0.05, 0.4721, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond10"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 176.9, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (70.3, 4.1, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3092, 0)
+                    double3 xformOp:scale = (0.05, 0.6183, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.6183239950199526, 0)
+                    double3 xformOp:rotateXYZ = (13.8, -1.7, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.3372, 0)
+                        double3 xformOp:scale = (0.05, 0.6744, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.6744182070360145, 0)
+                        double3 xformOp:rotateXYZ = (27.4, 6.6, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2971, 0)
+                            double3 xformOp:scale = (0.05, 0.5941, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond11"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 196.1, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (71.2, 2.5, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3178, 0)
+                    double3 xformOp:scale = (0.05, 0.6355, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.6355455495613193, 0)
+                    double3 xformOp:rotateXYZ = (16.2, 2.0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2709, 0)
+                        double3 xformOp:scale = (0.05, 0.5417, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5417328260393814, 0)
+                        double3 xformOp:rotateXYZ = (26.1, -0.6, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.3040, 0)
+                            double3 xformOp:scale = (0.05, 0.6081, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond12"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 223.0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (66.6, 0.0, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.2909, 0)
+                    double3 xformOp:scale = (0.05, 0.5818, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.5817977820795197, 0)
+                    double3 xformOp:rotateXYZ = (24.0, 5.2, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2849, 0)
+                        double3 xformOp:scale = (0.05, 0.5698, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.569766718717295, 0)
+                        double3 xformOp:rotateXYZ = (28.9, 1.5, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2440, 0)
+                            double3 xformOp:scale = (0.05, 0.4879, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond13"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 242.1, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (69.4, 3.9, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3173, 0)
+                    double3 xformOp:scale = (0.05, 0.6346, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.6345530508292766, 0)
+                    double3 xformOp:rotateXYZ = (13.0, -2.5, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2640, 0)
+                        double3 xformOp:scale = (0.05, 0.5279, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5279215113578749, 0)
+                        double3 xformOp:rotateXYZ = (33.0, 5.3, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2949, 0)
+                            double3 xformOp:scale = (0.05, 0.5897, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond14"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 258.5, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (64.6, 5.3, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3485, 0)
+                    double3 xformOp:scale = (0.05, 0.6970, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.6970424167946991, 0)
+                    double3 xformOp:rotateXYZ = (14.0, -0.2, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2677, 0)
+                        double3 xformOp:scale = (0.05, 0.5354, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5353818777702576, 0)
+                        double3 xformOp:rotateXYZ = (30.6, 3.7, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2421, 0)
+                            double3 xformOp:scale = (0.05, 0.4843, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond15"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 279.8, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (69.5, -3.3, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3429, 0)
+                    double3 xformOp:scale = (0.05, 0.6859, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.6858649561627886, 0)
+                    double3 xformOp:rotateXYZ = (18.1, -4.0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.3029, 0)
+                        double3 xformOp:scale = (0.05, 0.6059, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.6058944133169188, 0)
+                        double3 xformOp:rotateXYZ = (30.2, -4.2, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2559, 0)
+                            double3 xformOp:scale = (0.05, 0.5118, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond16"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 304.0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (70.5, -0.9, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3163, 0)
+                    double3 xformOp:scale = (0.05, 0.6326, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.6326363761553386, 0)
+                    double3 xformOp:rotateXYZ = (14.5, -3.9, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2879, 0)
+                        double3 xformOp:scale = (0.05, 0.5757, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5757128343221184, 0)
+                        double3 xformOp:rotateXYZ = (28.2, -3.8, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2490, 0)
+                            double3 xformOp:scale = (0.05, 0.4980, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond17"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 316.6, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (70.3, -3.8, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3454, 0)
+                    double3 xformOp:scale = (0.05, 0.6908, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.6908130019509192, 0)
+                    double3 xformOp:rotateXYZ = (23.3, -6.0, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2804, 0)
+                        double3 xformOp:scale = (0.05, 0.5607, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5607006951553493, 0)
+                        double3 xformOp:rotateXYZ = (29.4, -4.0, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2424, 0)
+                            double3 xformOp:scale = (0.05, 0.4848, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond18"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 343.5, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (69.7, -0.4, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3363, 0)
+                    double3 xformOp:scale = (0.05, 0.6727, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.672692913643613, 0)
+                    double3 xformOp:rotateXYZ = (22.7, -4.3, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2698, 0)
+                        double3 xformOp:scale = (0.05, 0.5395, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5395396221343236, 0)
+                        double3 xformOp:rotateXYZ = (26.0, -1.1, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2675, 0)
+                            double3 xformOp:scale = (0.05, 0.5351, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond19"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 11.1, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (64.3, -3.1, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.2942, 0)
+                    double3 xformOp:scale = (0.05, 0.5885, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.5884816107223234, 0)
+                    double3 xformOp:rotateXYZ = (21.8, 2.5, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.3294, 0)
+                        double3 xformOp:scale = (0.05, 0.6588, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.6588269351557269, 0)
+                        double3 xformOp:rotateXYZ = (21.2, -1.1, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2347, 0)
+                            double3 xformOp:scale = (0.05, 0.4695, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond20"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 27.7, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (69.1, -6.6, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.2924, 0)
+                    double3 xformOp:scale = (0.05, 0.5848, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.5848256476029973, 0)
+                    double3 xformOp:rotateXYZ = (20.8, 0.6, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2790, 0)
+                        double3 xformOp:scale = (0.05, 0.5581, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5580660933061046, 0)
+                        double3 xformOp:rotateXYZ = (28.2, 4.3, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2330, 0)
+                            double3 xformOp:scale = (0.05, 0.4660, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond21"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 52.4, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (71.0, -2.2, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.2892, 0)
+                    double3 xformOp:scale = (0.05, 0.5783, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.5783219249717673, 0)
+                    double3 xformOp:rotateXYZ = (24.5, -2.3, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2695, 0)
+                        double3 xformOp:scale = (0.05, 0.5389, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5389118765070222, 0)
+                        double3 xformOp:rotateXYZ = (21.4, 4.9, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2778, 0)
+                            double3 xformOp:scale = (0.05, 0.5556, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond22"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 72.5, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (71.3, 0.5, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3505, 0)
+                    double3 xformOp:scale = (0.05, 0.7010, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.7009673645969057, 0)
+                    double3 xformOp:rotateXYZ = (17.5, 0.7, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.3247, 0)
+                        double3 xformOp:scale = (0.05, 0.6494, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.6494106996379492, 0)
+                        double3 xformOp:rotateXYZ = (28.7, 5.1, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2758, 0)
+                            double3 xformOp:scale = (0.05, 0.5516, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond23"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 91.6, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (64.5, -3.8, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.2992, 0)
+                    double3 xformOp:scale = (0.05, 0.5984, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.598408194540316, 0)
+                    double3 xformOp:rotateXYZ = (14.0, -3.7, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2701, 0)
+                        double3 xformOp:scale = (0.05, 0.5402, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5401502144114594, 0)
+                        double3 xformOp:rotateXYZ = (23.9, 1.9, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2599, 0)
+                            double3 xformOp:scale = (0.05, 0.5197, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+        def Xform "Frond24"
+        {
+            double3 xformOp:translate = (0, 7.35, 0)
+            double3 xformOp:rotateXYZ = (0, 109.0, 0)
+            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+            def Xform "Seg1"
+            {
+                double3 xformOp:rotateXYZ = (66.1, -3.3, 0.0)
+                uniform token[] xformOpOrder = ["xformOp:rotateXYZ"]
+
+                def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                {
+                    double size = 1.0
+                    double3 xformOp:translate = (0, 0.3477, 0)
+                    double3 xformOp:scale = (0.05, 0.6955, 0.05)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                    rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                    color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                    bool physics:collisionEnabled = false
+                    bool primvars:doNotCastShadows = true
+                }
+
+                def Xform "Seg2"
+                {
+                    double3 xformOp:translate = (0, 0.695498188156874, 0)
+                    double3 xformOp:rotateXYZ = (20.8, 1.5, 0)
+                    uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                    def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                    {
+                        double size = 1.0
+                        double3 xformOp:translate = (0, 0.2753, 0)
+                        double3 xformOp:scale = (0.05, 0.5507, 0.05)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                        rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                        color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                        bool physics:collisionEnabled = false
+                        bool primvars:doNotCastShadows = true
+                    }
+
+                    def Xform "Seg3"
+                    {
+                        double3 xformOp:translate = (0, 0.5506707972297146, 0)
+                        double3 xformOp:rotateXYZ = (30.2, -4.7, 0)
+                        uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:rotateXYZ"]
+
+                        def Cube "Blade" ( prepend apiSchemas = ["MaterialBindingAPI", "LunCoSurfaceAPI"] )
+                        {
+                            double size = 1.0
+                            double3 xformOp:translate = (0, 0.2610, 0)
+                            double3 xformOp:scale = (0.05, 0.5219, 0.05)
+                            uniform token[] xformOpOrder = ["xformOp:translate", "xformOp:scale"]
+                            rel material:binding = </HoloPylonWaypoint/Looks/Frond_Mat>
+                            color3f[] primvars:displayColor = [(0.05, 2.6, 0.1)]
+                            bool physics:collisionEnabled = false
+                            bool primvars:doNotCastShadows = true
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
